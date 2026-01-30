@@ -1,0 +1,91 @@
+# Loki Configuration
+# Log aggregation with trace ID correlation
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /var/loki
+  storage:
+    filesystem:
+      chunks_directory: /var/loki/chunks
+      rules_directory: /var/loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+# Schema configuration for log storage
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# Ingester configuration
+ingester:
+  chunk_encoding: snappy
+  chunk_idle_period: 30m
+  chunk_block_size: 262144
+  chunk_retain_period: 1m
+  wal:
+    enabled: true
+    dir: /var/loki/wal
+
+# Querier configuration
+querier:
+  max_concurrent: 10
+
+# Query frontend
+frontend:
+  max_outstanding_per_tenant: 2048
+  compress_responses: true
+
+# Compactor for index compaction
+compactor:
+  working_directory: /var/loki/compactor
+  compaction_interval: 5m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+  delete_request_store: filesystem
+
+# Limits configuration
+limits_config:
+  retention_period: 72h
+  ingestion_rate_mb: 10
+  ingestion_burst_size_mb: 20
+  per_stream_rate_limit: 3MB
+  per_stream_rate_limit_burst: 15MB
+  max_entries_limit_per_query: 5000
+  max_query_series: 500
+
+# Storage configuration
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /var/loki/tsdb-shipper-active
+    cache_location: /var/loki/tsdb-shipper-cache
+    cache_ttl: 24h
+
+# Ruler for alerting (optional)
+ruler:
+  alertmanager_url: ""
+  storage:
+    type: local
+    local:
+      directory: /var/loki/rules
+  rule_path: /var/loki/rules-temp
+  enable_api: true
+
+# Analytics
+analytics:
+  reporting_enabled: false

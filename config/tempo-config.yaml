@@ -1,0 +1,102 @@
+# Tempo Configuration
+# Distributed tracing backend with metrics generation and exemplar support
+
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+
+# Distributor receives spans and routes to ingesters
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+# Ingester writes spans to storage
+ingester:
+  max_block_duration: 5m
+
+# Storage configuration
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal
+
+# Compactor merges blocks
+compactor:
+  compaction:
+    block_retention: 48h
+
+# Query frontend for trace lookups
+query_frontend:
+  search:
+    duration_slo: 5s
+    throughput_bytes_slo: 1.073741824e+09
+
+# Metrics generator - creates metrics from spans
+# This enables exemplars by writing span metrics to Prometheus
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: docker-compose
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+  processor:
+    # Service graphs show service-to-service communication
+    service_graphs:
+      dimensions:
+        - service.namespace
+        - http.method
+        - http.status_code
+      enable_client_server_prefix: true
+      peer_attributes:
+        - service.name
+        - service.namespace
+      histogram_buckets: [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
+      wait: 10s
+      max_items: 10000
+
+    # Span metrics generate RED metrics from traces
+    span_metrics:
+      dimensions:
+        - service.name
+        - service.namespace
+        - http.method
+        - http.route
+        - http.status_code
+      histogram_buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+      intrinsic_dimensions:
+        status_code: true
+        status_message: false
+      enable_target_info: true
+
+    # Local blocks processor for trace-to-metrics
+    local_blocks:
+      max_live_traces: 10000
+      max_block_duration: 5m
+      max_block_bytes: 1073741824
+      flush_check_period: 10s
+      trace_idle_period: 10s
+      complete_block_timeout: 15m
+
+# Overrides for per-tenant settings
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics
+        - local-blocks
+      generate_native_histograms: both

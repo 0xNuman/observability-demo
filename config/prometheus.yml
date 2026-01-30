@@ -1,0 +1,40 @@
+# Prometheus Configuration
+# Metrics storage with exemplar support for linking to traces
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'observability-demo'
+    env: 'docker'
+
+# Enable features for exemplars and native histograms
+# These are set via command line in docker-compose
+
+# Scrape configurations
+scrape_configs:
+  # Scrape OpenTelemetry Collector metrics endpoint
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']
+    # Enable exemplar scraping
+    scrape_interval: 10s
+    honor_labels: true
+
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape Tempo metrics
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+
+  # Scrape Loki metrics
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
+# Remote write receiver for Tempo span metrics
+# This allows Tempo to push span-derived metrics with exemplars
