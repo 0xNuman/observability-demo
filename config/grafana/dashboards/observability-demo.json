@@ -314,12 +314,87 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
       "id": 101,
       "panels": [],
-      "title": "External API Calls & Custom Metrics",
+      "title": "HTTP Client Metrics (Outgoing Calls)",
       "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Rate of calls to external APIs (jsonplaceholder) - custom business metric",
+      "description": "HTTP client request duration for outgoing calls (auto-instrumented)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "s"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "p99" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p95" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p50" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "id": 6,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(otel_http_client_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.95, sum(rate(otel_http_client_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(otel_http_client_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "HTTP Client Duration Percentiles (p50, p95, p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Rate of outgoing HTTP client requests (auto-instrumented)",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -350,58 +425,6 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
-      "id": 6,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "editorMode": "code",
-          "expr": "sum(rate(otel_demo_external_api_calls_total[1m])) by (api, endpoint)",
-          "legendFormat": "{{api}}/{{endpoint}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "External API Call Rate (Custom Metric)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "HTTP client request duration for outgoing calls to jsonplaceholder",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "s"
-        },
-        "overrides": []
-      },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
       "id": 7,
       "options": {
@@ -412,14 +435,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
-          "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(otel_http_client_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p95 - HTTP Client",
+          "expr": "sum(rate(otel_http_client_request_duration_seconds_count[1m])) by (server_address)",
+          "legendFormat": "{{server_address}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "HTTP Client Duration (External API p95)",
+      "title": "HTTP Client Request Rate",
       "type": "timeseries"
     },
     {
