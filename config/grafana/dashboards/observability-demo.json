@@ -732,41 +732,138 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 },
       "id": 103,
       "panels": [],
-      "title": "Logs (Recent)",
+      "title": "Logs Explorer",
       "type": "row"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "description": "Recent application logs - click TraceID to view trace",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 44 },
-      "id": 13,
+      "description": "Log volume over time by severity level",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Error" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Information" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Debug" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 44 },
+      "id": 14,
       "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
+        "legend": { "calcs": ["sum"], "displayMode": "list", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "{exporter=\"OTLP\"} | json",
+          "expr": "sum by (SeverityText) (count_over_time({exporter=\"OTLP\"} | json [$__interval]))",
+          "legendFormat": "{{SeverityText}}",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Application Logs",
+      "title": "Log Volume by Level",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Application logs - Use variables above to filter by level or search text. Click on a log line to see details including TraceId for correlation.",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 50 },
+      "id": 13,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "editorMode": "code",
+          "expr": "{exporter=\"OTLP\"} | json | SeverityText =~ `$log_level` |= `$log_search`",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Application Logs (Filtered)",
       "type": "logs"
     }
   ],
   "refresh": "5s",
   "schemaVersion": 38,
   "tags": ["observability", "dotnet", "opentelemetry"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "All", "value": "$__all" },
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "{exporter=\"OTLP\"} | json | line_format \"{{.SeverityText}}\"",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Log Level",
+        "multi": true,
+        "name": "log_level",
+        "options": [],
+        "query": "{exporter=\"OTLP\"} | json | line_format \"{{.SeverityText}}\"",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "custom",
+        "allValue": ".*",
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "Trace", "value": "Trace" },
+          { "selected": false, "text": "Debug", "value": "Debug" },
+          { "selected": false, "text": "Information", "value": "Information" },
+          { "selected": false, "text": "Warning", "value": "Warning" },
+          { "selected": false, "text": "Error", "value": "Error" },
+          { "selected": false, "text": "Fatal", "value": "Fatal" }
+        ]
+      },
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "hide": 0,
+        "label": "Search Logs",
+        "name": "log_search",
+        "options": [{ "selected": true, "text": "", "value": "" }],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
