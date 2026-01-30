@@ -1,11 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # =============================================================================
 # Traffic Generator for Observability Demo
 # Generates varied traffic patterns to demonstrate different observability scenarios
 # =============================================================================
-
-set -e
 
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:8080}"
@@ -22,7 +20,7 @@ NC='\033[0m' # No Color
 # Print banner
 echo -e "${BLUE}"
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║           Observability Demo Traffic Generator                ║"
+echo "║           Observability Demo Traffic Generator               ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -71,15 +69,14 @@ fi
 echo -e "${GREEN}API is available!${NC}"
 echo ""
 
-# Counter for statistics
-declare -A STATS
-STATS[hello]=0
-STATS[users]=0
-STATS[posts]=0
-STATS[slow]=0
-STATS[error]=0
-STATS[success]=0
-STATS[failure]=0
+# Simple counters (no associative arrays needed)
+HELLO_COUNT=0
+USERS_COUNT=0
+POSTS_COUNT=0
+SLOW_COUNT=0
+ERROR_COUNT=0
+SUCCESS_COUNT=0
+FAILURE_COUNT=0
 
 # Cleanup function
 cleanup() {
@@ -88,14 +85,14 @@ cleanup() {
     echo -e "${GREEN}Traffic Generation Complete!${NC}"
     echo ""
     echo "Statistics:"
-    echo "  Hello requests:  ${STATS[hello]}"
-    echo "  User requests:   ${STATS[users]}"
-    echo "  Post requests:   ${STATS[posts]}"
-    echo "  Slow requests:   ${STATS[slow]}"
-    echo "  Error requests:  ${STATS[error]}"
+    echo "  Hello requests:  $HELLO_COUNT"
+    echo "  User requests:   $USERS_COUNT"
+    echo "  Post requests:   $POSTS_COUNT"
+    echo "  Slow requests:   $SLOW_COUNT"
+    echo "  Error requests:  $ERROR_COUNT"
     echo ""
-    echo "  Total successful: ${STATS[success]}"
-    echo "  Total failed:     ${STATS[failure]}"
+    echo "  Total successful: $SUCCESS_COUNT"
+    echo "  Total failed:     $FAILURE_COUNT"
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 
     # Kill all background processes
@@ -103,22 +100,20 @@ cleanup() {
     exit 0
 }
 
-trap cleanup SIGINT SIGTERM
+trap cleanup SIGINT SIGTERM EXIT
 
-# Function to make a request and record stats
+# Function to make a request
 make_request() {
     local endpoint=$1
-    local stat_key=$2
+    local name=$2
 
     response=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL$endpoint" 2>/dev/null || echo "000")
 
-    ((STATS[$stat_key]++)) || true
-
     if [[ "$response" =~ ^2[0-9][0-9]$ ]]; then
-        ((STATS[success]++)) || true
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
         echo -e "  ${GREEN}✓${NC} $endpoint → $response"
     else
-        ((STATS[failure]++)) || true
+        FAILURE_COUNT=$((FAILURE_COUNT + 1))
         echo -e "  ${RED}✗${NC} $endpoint → $response"
     fi
 }
@@ -127,6 +122,7 @@ make_request() {
 generate_hello_traffic() {
     while true; do
         make_request "/api/demo/hello" "hello"
+        HELLO_COUNT=$((HELLO_COUNT + 1))
         sleep $HELLO_INTERVAL
     done
 }
@@ -136,6 +132,7 @@ generate_user_traffic() {
         # Random user ID between 1 and 10
         user_id=$((RANDOM % 10 + 1))
         make_request "/api/demo/users/$user_id" "users"
+        USERS_COUNT=$((USERS_COUNT + 1))
         sleep $USER_INTERVAL
     done
 }
@@ -145,6 +142,7 @@ generate_post_traffic() {
         # Random limit between 5 and 20
         limit=$((RANDOM % 16 + 5))
         make_request "/api/demo/posts?limit=$limit" "posts"
+        POSTS_COUNT=$((POSTS_COUNT + 1))
         sleep $POST_INTERVAL
     done
 }
@@ -162,6 +160,7 @@ generate_slow_traffic() {
             delay=$((RANDOM % 1500 + 500))   # 500-2000ms (10% of requests)
         fi
         make_request "/api/demo/slow?delayMs=$delay" "slow"
+        SLOW_COUNT=$((SLOW_COUNT + 1))
         sleep $SLOW_INTERVAL
     done
 }
@@ -169,6 +168,7 @@ generate_slow_traffic() {
 generate_error_traffic() {
     while true; do
         make_request "/api/demo/error" "error"
+        ERROR_COUNT=$((ERROR_COUNT + 1))
         sleep $ERROR_INTERVAL
     done
 }
@@ -189,4 +189,3 @@ generate_error_traffic &
 sleep $DURATION
 
 # Cleanup will be called by trap
-cleanup
