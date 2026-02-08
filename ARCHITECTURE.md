@@ -74,6 +74,7 @@ The WebAPI is a .NET 10 application with OpenTelemetry SDK configured via a sing
 - **Logs:** Structured logs with trace correlation (TraceId, SpanId)
 
 **Environment Variables:**
+
 | Variable | Purpose |
 |----------|---------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Where to send telemetry (collector) |
@@ -173,6 +174,7 @@ metrics_generator:
 Prometheus stores all metrics data and provides PromQL for querying. It's configured with special features:
 
 **Enabled Features:**
+
 | Feature | Purpose |
 |---------|---------|
 | `exemplar-storage` | Links metrics to trace IDs (click metric → see trace) |
@@ -267,6 +269,7 @@ Grafana provides a single pane of glass for:
 - **Correlations** - Jump from metrics → traces → logs
 
 **Enabled Feature Toggles:**
+
 | Feature | Purpose |
 |---------|---------|
 | `traceqlEditor` | TraceQL query builder |
