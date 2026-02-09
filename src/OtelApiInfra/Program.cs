@@ -15,7 +15,13 @@ sealed class Program
                 Account = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT"),
                 Region = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION")
             },
-            Description = "Observability Demo: .NET 10 API + ADOT + AMP + AMG on Windows EC2"
+            Description = "Observability Demo: .NET 10 API + ADOT + AMP + AMG on Windows EC2",
+            Tags = new Dictionary<string, string>
+            {
+                ["Project"] = "ObservabilityDemo",
+                ["Owner"] = "Numan Mohammed",
+                ["Environment"] = "Demo"
+            }
         });
 
         app.Synth();
