@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/.DS_Store
+**/.idea/
+**/.vscode/
+**/TestResults/
+.git/
+.gitignore

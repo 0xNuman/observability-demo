@@ -1,0 +1,6 @@
+@ObservabilityDemo.Api_HostAddress = http://localhost:0
+
+GET {{ObservabilityDemo.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

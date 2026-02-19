@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ObservabilityDemo.Api/ObservabilityDemo.Api.csproj" />
+    <Project Path="src/ObservabilityDemo.Application/ObservabilityDemo.Application.csproj" />
+    <Project Path="src/ObservabilityDemo.Domain/ObservabilityDemo.Domain.csproj" />
+    <Project Path="src/ObservabilityDemo.Infrastructure/ObservabilityDemo.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ObservabilityDemo.Api.Tests/ObservabilityDemo.Api.Tests.csproj" />
+    <Project Path="tests/ObservabilityDemo.ArchitectureTests/ObservabilityDemo.ArchitectureTests.csproj" />
+    <Project Path="tests/ObservabilityDemo.IntegrationTests/ObservabilityDemo.IntegrationTests.csproj" />
+  </Folder>
+</Solution>
