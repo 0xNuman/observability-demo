@@ -76,10 +76,16 @@ Dashboards:
 - `Latency Overview (Bootstrap)`
 - `Reliability And Drilldown`
 
+Fast path (few clicks):
+1. Use latency/error panels to identify a spike.
+2. Click an exemplar marker (dot) on a Prometheus timeseries to open the related Tempo trace.
+3. From the trace view, use trace-to-logs to pivot directly into Loki for that trace/span window.
+
+Fallback path (if exemplar is not present at that point in time):
 1. Use Prometheus panels to identify the slow route (`p95` and `Slow Requests > 500ms`).
 2. In Grafana Explore (Tempo), search traces by `service.name=observability-demo-api` and duration filter.
 3. Open a trace and inspect the span waterfall to find the slow segment.
-4. Pivot to Loki logs using `trace_id` (derived field link is provisioned).
+4. Pivot to Loki logs using trace link (`traceid` field is auto-linked to Tempo).
 5. Use `tenant_id`, `request_path`, and `http_status_code` fields to isolate affected tenant/endpoint.
 
 Full incident workflow:

@@ -52,8 +52,13 @@ sum by (http_route) (rate(http_server_request_duration_seconds_bucket{exported_j
 
 ## Trace + Log Pivot
 1. Search Tempo with `service.name=observability-demo-api`.
-2. Open a slow trace and copy `trace_id` if needed.
+2. Open a slow trace and copy `traceid` if needed.
 3. Query Loki:
 ```logql
-{service_name="observability-demo-api"} | json | trace_id="<trace_id>"
+{service_name="observability-demo-api"} | json | traceid="<traceid>"
+```
+
+Error-only logs:
+```logql
+{service_name="observability-demo-api"} | json | attributes_StatusCode >= 500
 ```

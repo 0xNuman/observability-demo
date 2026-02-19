@@ -203,7 +203,8 @@
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[5m]))) * 1000",
-          "legendFormat": "{{http_route}}"
+          "legendFormat": "{{http_route}}",
+          "exemplar": true
         }
       ],
       "gridPos": {
@@ -224,7 +225,8 @@
       "targets": [
         {
           "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[5m])) - sum by (http_route) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",le=\"0.5\"}[5m]))",
-          "legendFormat": "{{http_route}}"
+          "legendFormat": "{{http_route}}",
+          "exemplar": true
         }
       ],
       "gridPos": {
@@ -266,7 +268,8 @@
       "targets": [
         {
           "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_response_status_code=~\"5..\"}[5m]))",
-          "legendFormat": "{{http_route}}"
+          "legendFormat": "{{http_route}}",
+          "exemplar": true
         }
       ],
       "gridPos": {
@@ -321,7 +324,7 @@
       },
       "targets": [
         {
-          "expr": "{service_name=\"observability-demo-api\"} | json | http_status_code >= 500",
+          "expr": "{service_name=\"observability-demo-api\"} | json | attributes_StatusCode >= 500",
           "refId": "A"
         }
       ],
@@ -330,6 +333,28 @@
         "w": 12,
         "x": 12,
         "y": 22
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Exemplar Clickthrough (Raw Duration Buckets)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",le=\"+Inf\",http_route=~\"work-items|work-items/.*|diagnostics/slow|diagnostics/fail\"}[1m])",
+          "legendFormat": "{{http_route}} {{exported_instance}}",
+          "exemplar": true
+        }
+      ],
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 29
       }
     }
   ],

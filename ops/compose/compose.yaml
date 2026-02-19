@@ -10,6 +10,7 @@ services:
       Service__Name: observability-demo-api
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=observability_demo;Username=postgres;Password=postgres
       Observability__OtlpEndpoint: http://otel-collector:4318
+      OTEL_METRICS_EXEMPLAR_FILTER: always_on
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,6 +98,7 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=15d"
+      - "--enable-feature=exemplar-storage"
       - "--web.enable-lifecycle"
     volumes:
       - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro

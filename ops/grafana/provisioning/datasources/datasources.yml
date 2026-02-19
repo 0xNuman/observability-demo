@@ -6,6 +6,10 @@ datasources:
     uid: prometheus
     access: proxy
     url: http://prometheus:9090
+    jsonData:
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo
+          name: TraceID
     isDefault: true
     editable: true
 
@@ -29,7 +33,7 @@ datasources:
     editable: true
     jsonData:
       derivedFields:
-        - matcherRegex: "\"trace_id\":\"([0-9a-f]{32})\""
+        - matcherRegex: "\"trace(?:_|)id\":\"([0-9a-f]{32})\""
           name: trace_id
           datasourceUid: tempo
           url: "$${__value.raw}"

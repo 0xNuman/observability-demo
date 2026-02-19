@@ -2,6 +2,15 @@
 
 Use this workflow when you detect a latency spike, increased errors, or a drop in reliability.
 
+## Fast Path (Metric -> Trace -> Logs)
+
+When exemplar data is present, use this shortest path:
+1. In a Prometheus timeseries panel, click an exemplar marker (dot) near the spike.
+2. Grafana opens the corresponding Tempo trace.
+3. From trace view, use trace-to-logs to open matching Loki logs.
+
+This is the primary low-friction workflow for incident triage.
+
 ## 1. Start from Dashboard Signals
 
 Open Grafana dashboard: `Reliability And Drilldown`.
@@ -30,7 +39,7 @@ Search with:
 Open one representative slow or failed trace and inspect the span waterfall.
 
 Capture:
-- `trace_id`
+- `traceid`
 - `service.instance.id` (or instance identifier)
 - `tenant_id` (if present)
 - slowest span name and duration
@@ -54,25 +63,25 @@ Base query:
 Route-focused:
 
 ```logql
-{service_name="observability-demo-api"} | json | request_path="/your/route"
+{service_name="observability-demo-api"} | json | attributes_RequestPath="/your/route"
 ```
 
 Error-focused:
 
 ```logql
-{service_name="observability-demo-api"} | json | request_path="/your/route" | http_status_code >= 500
+{service_name="observability-demo-api"} | json | attributes_RequestPath="/your/route" | attributes_StatusCode >= 500
 ```
 
 Trace-focused:
 
 ```logql
-{service_name="observability-demo-api"} | json | trace_id="your-trace-id"
+{service_name="observability-demo-api"} | json | traceid="your-trace-id"
 ```
 
 Then refine with:
 - `tenant_id`
 - `instance_id`
-- `http_status_code`
+- `attributes_StatusCode`
 
 Goal: find concrete error/timeout evidence explaining the trace behavior.
 
@@ -104,4 +113,3 @@ Instance-specific incident:
 1. Set dashboard `instance` to one value.
 2. Compare route/error behavior with `All`.
 3. Validate in logs with matching `instance_id`.
-

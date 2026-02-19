@@ -16,7 +16,8 @@
       "targets": [
         {
           "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m]))) * 1000",
-          "legendFormat": "p50"
+          "legendFormat": "p50",
+          "exemplar": true
         }
       ],
       "gridPos": {
@@ -37,7 +38,8 @@
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m]))) * 1000",
-          "legendFormat": "p95"
+          "legendFormat": "p95",
+          "exemplar": true
         }
       ],
       "gridPos": {
@@ -58,7 +60,8 @@
       "targets": [
         {
           "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m]))) * 1000",
-          "legendFormat": "p99"
+          "legendFormat": "p99",
+          "exemplar": true
         }
       ],
       "gridPos": {

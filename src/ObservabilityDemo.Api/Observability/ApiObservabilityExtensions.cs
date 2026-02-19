@@ -92,6 +92,7 @@ public static class ApiObservabilityExtensions
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
+                    .SetExemplarFilter(ExemplarFilterType.TraceBased)
                     .AddMeter(WorkItemTelemetry.MeterName)
                     .AddView(
                         instrumentName: "http.server.request.duration",
