@@ -1,0 +1,339 @@
+{
+  "title": "Reliability And Drilldown",
+  "uid": "reliability-drilldown",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "label": "Instance",
+        "hide": 0,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(http_server_request_duration_seconds_count{job=\"observability-demo-api\"}, instance)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Availability SLI (30d)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "100 * (sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_response_status_code!~\"5..\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\"}[30d])))",
+          "legendFormat": "availability"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99.0
+              },
+              {
+                "color": "green",
+                "value": 99.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Error Rate SLI (30d)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "100 * (sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_response_status_code=~\"5..\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\"}[30d])))",
+          "legendFormat": "error-rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1.0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Latency SLI <= 500ms (30d)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "100 * (sum(increase(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\",http_route!=\"diagnostics/slow\",le=\"0.5\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_route!=\"diagnostics/slow\"}[30d])))",
+          "legendFormat": "latency-sli"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 95
+              },
+              {
+                "color": "green",
+                "value": 99
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Uptime % (24h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "100 * avg(avg_over_time(up{job=\"api-uptime\"}[24h]))",
+          "legendFormat": "uptime-24h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "p95 Latency By Route (ms)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\"}[5m]))) * 1000",
+          "legendFormat": "{{http_route}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Slow Requests > 500ms By Route (req/s)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\"}[5m])) - sum by (http_route) (rate(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\",le=\"0.5\"}[5m]))",
+          "legendFormat": "{{http_route}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top Slow Routes p95 (ms, 5m)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\"}[5m]))) * 1000)",
+          "format": "table"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "5xx Rate By Route (req/s)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_response_status_code=~\"5..\"}[5m]))",
+          "legendFormat": "{{http_route}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Uptime % By Instance (24h / 7d / 30d)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "100 * avg_over_time(up{job=\"api-uptime\"}[24h])",
+          "legendFormat": "{{instance}} 24h",
+          "format": "table",
+          "refId": "A"
+        },
+        {
+          "expr": "100 * avg_over_time(up{job=\"api-uptime\"}[7d])",
+          "legendFormat": "{{instance}} 7d",
+          "format": "table",
+          "refId": "B"
+        },
+        {
+          "expr": "100 * avg_over_time(up{job=\"api-uptime\"}[30d])",
+          "legendFormat": "{{instance}} 30d",
+          "format": "table",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      }
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Error Logs (Click trace_id to open Tempo trace)",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{service_name=\"observability-demo-api\"} | json | http_status_code >= 500",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      }
+    }
+  ],
+  "annotations": {
+    "list": []
+  }
+}

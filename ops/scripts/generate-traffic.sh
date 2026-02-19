@@ -3,8 +3,9 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URLS="${BASE_URLS:-}"
 TENANT_ID="${TENANT_ID:-11111111-1111-1111-1111-111111111111}"
-ITERATIONS="${ITERATIONS:-250}"
+ITERATIONS="${ITERATIONS:-50}"
 SLEEP_MS="${SLEEP_MS:-150}"
 SLOW_EVERY="${SLOW_EVERY:-8}"
 FAIL_EVERY="${FAIL_EVERY:-15}"
@@ -17,6 +18,8 @@ Usage:
 
 Options:
   --base-url URL         API base URL (default: http://localhost:8080)
+  --base-urls LIST       Comma-separated base URLs for round-robin traffic
+                         (example: http://localhost:8080,http://localhost:8081,http://localhost:8082)
   --tenant-id GUID       Tenant ID header value
   --iterations N         Number of traffic iterations (default: 50)
   --sleep-ms N           Sleep between iterations in milliseconds (default: 150)
@@ -26,7 +29,7 @@ Options:
   -h, --help             Show this help
 
 Environment overrides are also supported:
-  BASE_URL, TENANT_ID, ITERATIONS, SLEEP_MS, SLOW_EVERY, FAIL_EVERY, SLOW_DELAY_MS
+  BASE_URL, BASE_URLS, TENANT_ID, ITERATIONS, SLEEP_MS, SLOW_EVERY, FAIL_EVERY, SLOW_DELAY_MS
 EOF
 }
 
@@ -34,6 +37,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --base-url)
       BASE_URL="$2"
+      shift 2
+      ;;
+    --base-urls)
+      BASE_URLS="$2"
       shift 2
       ;;
     --tenant-id)
@@ -82,6 +89,11 @@ if ! [[ "$SLEEP_MS" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
+IFS=',' read -r -a target_base_urls <<< "$BASE_URLS"
+if [[ "${#target_base_urls[@]}" -eq 0 ]] || [[ -z "${target_base_urls[0]}" ]]; then
+  target_base_urls=("$BASE_URL")
+fi
+
 status_code() {
   local code
   code="$(curl -s -o /tmp/observability-demo-traffic-response.json -w "%{http_code}" "$@")"
@@ -124,39 +136,41 @@ classify_code() {
 }
 
 echo "Generating traffic..."
-echo "BASE_URL=$BASE_URL TENANT_ID=$TENANT_ID ITERATIONS=$ITERATIONS"
+echo "BASE_URLS=${target_base_urls[*]} TENANT_ID=$TENANT_ID ITERATIONS=$ITERATIONS"
 
 for ((i=1; i<=ITERATIONS; i++)); do
-  code="$(status_code "$BASE_URL/work-items?page=1&pageSize=20" -H "X-Tenant-Id: $TENANT_ID")"
+  target="${target_base_urls[$(((i - 1) % ${#target_base_urls[@]}))]}"
+
+  code="$(status_code -H "X-Tenant-Id: $TENANT_ID" "$target/work-items?page=1&pageSize=20")"
   classify_code "$code"
 
   payload="$(cat <<EOF
 {"title":"Traffic item $i","description":"Generated load item $i","priority":"High","requestedBy":"traffic-script"}
 EOF
 )"
-  code="$(status_code -X POST "$BASE_URL/work-items" -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" -d "$payload")"
+  code="$(status_code -X POST -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" -d "$payload" "$target/work-items")"
   classify_code "$code"
 
   work_item_id="$(extract_id)"
   if [[ -n "$work_item_id" ]]; then
-    code="$(status_code -X PATCH "$BASE_URL/work-items/$work_item_id/status" -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" -d '{"status":"InProgress","updatedBy":"traffic-script"}')"
+    code="$(status_code -X PATCH -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" -d '{"status":"InProgress","updatedBy":"traffic-script"}' "$target/work-items/$work_item_id/status")"
     classify_code "$code"
 
     bulk_payload="$(cat <<EOF
 {"workItemIds":["$work_item_id"],"targetStatus":"Blocked","changedBy":"traffic-script","correlationId":"traffic-$i"}
 EOF
 )"
-    code="$(status_code -X POST "$BASE_URL/work-items/bulk-transition" -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" -d "$bulk_payload")"
+    code="$(status_code -X POST -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" -d "$bulk_payload" "$target/work-items/bulk-transition")"
     classify_code "$code"
   fi
 
   if (( SLOW_EVERY > 0 && i % SLOW_EVERY == 0 )); then
-    code="$(status_code "$BASE_URL/diagnostics/slow?delayMs=$SLOW_DELAY_MS")"
+    code="$(status_code "$target/diagnostics/slow?delayMs=$SLOW_DELAY_MS")"
     classify_code "$code"
   fi
 
   if (( FAIL_EVERY > 0 && i % FAIL_EVERY == 0 )); then
-    code="$(status_code "$BASE_URL/diagnostics/fail")"
+    code="$(status_code "$target/diagnostics/fail")"
     classify_code "$code"
   fi
 

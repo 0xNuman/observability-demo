@@ -8,6 +8,14 @@ scrape_configs:
       - targets:
           - otel-collector:8889
 
+  - job_name: api-uptime
+    metrics_path: /health/prometheus
+    dns_sd_configs:
+      - names:
+          - api
+        type: A
+        port: 8080
+
   - job_name: prometheus
     static_configs:
       - targets:
