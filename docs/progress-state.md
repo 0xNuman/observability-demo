@@ -10,7 +10,11 @@ To resume without scanning the full repo, read only:
 
 ## Current Milestone Status
 - Milestone 1 (scaffold baseline): complete
-- Milestone 2 (first tenant-aware vertical slice): in progress
+- Milestone 2 (first tenant-aware vertical slice): complete
+- Milestone 3 (PostgreSQL schema/scripts): complete
+- Milestone 4 (Dapper + stored procedure wiring): complete
+- Milestone 5 (API endpoints + tenant middleware): complete
+- Milestone 6 (OpenTelemetry + Serilog code wiring): implemented, pending runtime smoke in compose
 
 ## Completed Work
 - Created solution in new format: `ObservabilityDemo.slnx` (legacy `.sln` removed).
@@ -58,6 +62,21 @@ To resume without scanning the full repo, read only:
   - `Dapper`
   - `Npgsql`
   - `Microsoft.Extensions.Configuration.Abstractions`
+- Implemented OpenTelemetry + Serilog wiring in API startup:
+  - OTLP export for traces, metrics, and logs
+  - resource attributes (`service.name`, `service.version`, `service.instance.id`, `deployment.environment`)
+  - ASP.NET Core + HttpClient auto instrumentation
+  - Npgsql auto span collection (`AddSource("Npgsql")`)
+  - explicit HTTP duration histogram buckets for percentile queries
+- Added request log enrichment and correlation fields:
+  - `trace_id`, `span_id`, `tenant_id`, `request_path`, `http_status_code`, `instance_id`
+- Added tenant tag/baggage enrichment for trace-level tenant correlation.
+- Added custom business metrics for bulk transition:
+  - batch size histogram
+  - updated/rejected counters
+- Added verification-focused tests for Milestone 2 behavior:
+  - API endpoint tests with `WebApplicationFactory` for tenant header validation and WorkItem flows
+  - Application service tests for pagination/transition validation behavior
 
 ## Important Fix Applied
 Build error from missing `IServiceCollection` references was addressed by adding:
@@ -65,6 +84,8 @@ Build error from missing `IServiceCollection` references was addressed by adding
   - `src/ObservabilityDemo.Application/ObservabilityDemo.Application.csproj`
   - `src/ObservabilityDemo.Infrastructure/ObservabilityDemo.Infrastructure.csproj`
 - Follow-up compile issue in Infrastructure DI (`PostgresConnectionString` type resolution) was fixed by adding the missing namespace import.
+- Telemetry compile issue in Infrastructure (`TagList` resolution) was fixed by adding the required `System.Diagnostics` namespace import.
+- API test JSON enum deserialization mismatch was fixed by using explicit `JsonStringEnumConverter` in test client parsing.
 
 ## Verification Completed
 - `dotnet restore` completed successfully (2026-02-19, ~0.5s).
@@ -74,9 +95,12 @@ Build error from missing `IServiceCollection` references was addressed by adding
   - `dotnet restore ObservabilityDemo.slnx -v minimal` (success)
   - `dotnet build ObservabilityDemo.slnx --no-restore -v minimal` (success)
   - `dotnet test ObservabilityDemo.slnx --no-build -v minimal` (success)
+- Observability and test expansion changes re-verified:
+  - `dotnet restore ObservabilityDemo.slnx -v minimal` (success, no unresolved package warnings)
+  - `dotnet build ObservabilityDemo.slnx --no-restore -v minimal` (success, 0 warnings/0 errors)
+  - `dotnet test ObservabilityDemo.slnx --no-build -v minimal` (success, all test projects passing)
 
 ## Next Steps (Immediate)
-1. Add OpenTelemetry + Serilog configuration with required comments and correlation fields.
-2. Expand endpoint tests beyond placeholders (tenant validation and WorkItem behavior paths).
-3. Add SLI/SLO + uptime panels/queries to Grafana.
-4. Run compose stack smoke tests for end-to-end API + Postgres + observability flow.
+1. Run compose stack smoke tests for end-to-end API + Postgres + observability flow.
+2. Validate trace/log/metric drill-down in Grafana/Tempo/Loki using diagnostics + WorkItem endpoints.
+3. Add/adjust SLI/SLO + uptime panels/queries to productionize the dashboards.

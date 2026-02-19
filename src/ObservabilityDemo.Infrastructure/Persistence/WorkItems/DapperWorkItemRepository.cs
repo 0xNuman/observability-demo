@@ -1,13 +1,17 @@
 using Dapper;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using ObservabilityDemo.Application.Abstractions.Persistence;
 using ObservabilityDemo.Application.WorkItems;
 using ObservabilityDemo.Domain.Enums;
+using ObservabilityDemo.Infrastructure.Observability;
 using ObservabilityDemo.Infrastructure.Persistence;
 
 namespace ObservabilityDemo.Infrastructure.Persistence.WorkItems;
 
-public sealed class DapperWorkItemRepository(PostgresConnectionString connectionString) : IWorkItemRepository
+public sealed class DapperWorkItemRepository(
+    PostgresConnectionString connectionString,
+    ILogger<DapperWorkItemRepository> logger) : IWorkItemRepository
 {
     private const string SelectProjection = """
         id,
@@ -235,7 +239,22 @@ public sealed class DapperWorkItemRepository(PostgresConnectionString connection
             },
             cancellationToken: cancellationToken);
 
-        return await connection.QuerySingleAsync<BulkTransitionResult>(command);
+        var result = await connection.QuerySingleAsync<BulkTransitionResult>(command);
+        WorkItemTelemetry.RecordBulkTransition(
+            batchSize: workItemIds.Count,
+            updatedCount: result.UpdatedCount,
+            rejectedCount: result.RejectedCount,
+            targetStatus: targetStatus.ToString());
+
+        logger.LogInformation(
+            "Bulk transition completed. tenant_id={tenant_id} target_status={target_status} updated_count={updated_count} rejected_count={rejected_count} correlation_id={correlation_id}",
+            tenantId,
+            targetStatus,
+            result.UpdatedCount,
+            result.RejectedCount,
+            correlationId);
+
+        return result;
     }
 
     private async Task<NpgsqlConnection> CreateOpenConnectionAsync(CancellationToken cancellationToken)

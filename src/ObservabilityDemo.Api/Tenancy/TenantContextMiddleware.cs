@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Serilog.Context;
+using System.Diagnostics;
 
 namespace ObservabilityDemo.Api.Tenancy;
 
@@ -6,6 +8,7 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
 {
     private static readonly PathString WorkItemsPath = new("/work-items");
     private const string TenantHeaderName = "X-Tenant-Id";
+    public const string TenantLogPropertyName = "tenant_id";
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext)
     {
@@ -33,7 +36,14 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
         }
 
         tenantContext.SetTenant(tenantId);
-        await next(context);
+        context.Items[TenantLogPropertyName] = tenantId.ToString();
+        Activity.Current?.SetTag("tenant.id", tenantId);
+        Activity.Current?.AddBaggage("tenant.id", tenantId.ToString());
+
+        using (LogContext.PushProperty(TenantLogPropertyName, tenantId))
+        {
+            await next(context);
+        }
     }
 
     private static async Task WriteBadRequestAsync(HttpContext context, string detail)

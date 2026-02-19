@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ObservabilityDemo.Api\ObservabilityDemo.Api.csproj" />
+    <ProjectReference Include="..\..\src\ObservabilityDemo.Application\ObservabilityDemo.Application.csproj" />
     <ProjectReference Include="..\..\src\ObservabilityDemo.Infrastructure\ObservabilityDemo.Infrastructure.csproj" />
   </ItemGroup>
 

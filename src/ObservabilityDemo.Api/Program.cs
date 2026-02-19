@@ -1,4 +1,5 @@
 using ObservabilityDemo.Application;
+using ObservabilityDemo.Api.Observability;
 using ObservabilityDemo.Infrastructure;
 using ObservabilityDemo.Api.Tenancy;
 using System.Text.Json.Serialization;
@@ -14,9 +15,11 @@ builder.Services
     });
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.AddApiObservability();
 
 var app = builder.Build();
 
@@ -26,6 +29,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+app.UseApiObservability();
 app.UseMiddleware<TenantContextMiddleware>();
 
 app.MapGet(
