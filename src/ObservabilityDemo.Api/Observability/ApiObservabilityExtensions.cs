@@ -16,7 +16,10 @@ public static class ApiObservabilityExtensions
     public static WebApplicationBuilder AddApiObservability(this WebApplicationBuilder builder)
     {
         var serviceName = builder.Configuration["Service:Name"] ?? "observability-demo-api";
-        var serviceInstanceId = builder.Configuration["Service:InstanceId"] ?? Environment.MachineName;
+        var configuredInstanceId = builder.Configuration["Service:InstanceId"];
+        var serviceInstanceId = string.IsNullOrWhiteSpace(configuredInstanceId)
+            ? Environment.MachineName
+            : configuredInstanceId;
         var deploymentEnvironment = builder.Environment.EnvironmentName;
         var serviceVersion = typeof(Program).Assembly.GetName().Version?.ToString() ?? "1.0.0";
         var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"] ?? "http://localhost:4317";
@@ -144,7 +147,10 @@ public static class ApiObservabilityExtensions
                     httpContext.Items.TryGetValue(TenantContextMiddleware.TenantLogPropertyName, out var tenantId)
                         ? tenantId?.ToString() ?? "unknown"
                         : "unknown");
-                diagnosticContext.Set("instance_id", app.Configuration["Service:InstanceId"] ?? Environment.MachineName);
+                var configuredInstanceId = app.Configuration["Service:InstanceId"];
+                diagnosticContext.Set(
+                    "instance_id",
+                    string.IsNullOrWhiteSpace(configuredInstanceId) ? Environment.MachineName : configuredInstanceId);
             };
         });
 

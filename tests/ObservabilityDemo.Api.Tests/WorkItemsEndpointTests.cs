@@ -100,6 +100,23 @@ public sealed class WorkItemsEndpointTests(ApiTestFactory factory) : IClassFixtu
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
+
+    [Fact]
+    public async Task HealthPrometheus_ReturnsPrometheusFormattedMetrics()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health/prometheus");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            "text/plain",
+            response.Content.Headers.ContentType?.MediaType);
+
+        var payload = await response.Content.ReadAsStringAsync();
+        Assert.Contains("api_up 1", payload, StringComparison.Ordinal);
+        Assert.Contains("api_process_uptime_seconds", payload, StringComparison.Ordinal);
+    }
 }
 
 public sealed class ApiTestFactory : WebApplicationFactory<Program>
