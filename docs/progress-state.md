@@ -16,7 +16,10 @@ To resume without scanning the full repo, read only:
 - Milestone 5 (API endpoints + tenant middleware): complete
 - Milestone 6 (OpenTelemetry + Serilog code wiring): complete
 - Milestone 7 (Podman compose stack + config files): complete
-- Milestone 10 (scaling/telemetry drill-down validation): in progress (single-instance smoke complete)
+- Milestone 8 (SLI/SLO/percentiles/uptime dashboards and queries): complete
+- Milestone 9 (diagnostics endpoints for slow/fail scenarios): complete
+- Milestone 10 (scaling/telemetry drill-down validation): complete
+- Milestone 11 (tests + documentation finalization): complete
 
 ## Completed Work
 - Created solution in new format: `ObservabilityDemo.slnx` (legacy `.sln` removed).
@@ -82,6 +85,25 @@ To resume without scanning the full repo, read only:
 - Added traffic generation script for observability demos:
   - `ops/scripts/generate-traffic.sh`
   - generates normal + slow + failing traffic patterns for Grafana/Tempo/Loki validation
+- Added proxy-based ingress for scale-safe local routing:
+  - `ops/nginx/nginx.conf`
+  - `ops/compose/compose.yaml` now exposes host port `8080` on `proxy` and keeps `api` internal
+- Added Prometheus-friendly uptime endpoint in API:
+  - `GET /health/prometheus` in `src/ObservabilityDemo.Api/Program.cs`
+- Added Prometheus uptime scrape config:
+  - `ops/prometheus/prometheus.yml` `api-uptime` scrape job via DNS service discovery
+- Added Grafana trace pivot from logs and reliability drill-down dashboard:
+  - `ops/grafana/provisioning/datasources/datasources.yml` derived `trace_id` field to Tempo
+  - `ops/grafana/dashboards/reliability-drilldown.json`
+- Added query cookbook documentation:
+  - `docs/observability-queries.md`
+- Added scale validation automation:
+  - `ops/scripts/scale-validate.sh`
+  - validates multi-replica traffic and per-instance metric labels
+  - made compatible with macOS Bash 3 by replacing `mapfile` usage
+  - includes bounded retry for metric propagation to avoid flaky false negatives
+- Expanded API tests with uptime endpoint verification:
+  - `tests/ObservabilityDemo.Api.Tests/WorkItemsEndpointTests.cs`
 
 ## Important Fix Applied
 Build error from missing `IServiceCollection` references was addressed by adding:
@@ -110,6 +132,8 @@ Build error from missing `IServiceCollection` references was addressed by adding
   - `dotnet restore ObservabilityDemo.slnx -v minimal` (success, no unresolved package warnings)
   - `dotnet build ObservabilityDemo.slnx --no-restore -v minimal` (success, 0 warnings/0 errors)
   - `dotnet test ObservabilityDemo.slnx --no-build -v minimal` (success, all test projects passing)
+- Final verification pass after scaling/uptime/proxy updates:
+  - `dotnet test ObservabilityDemo.slnx -v minimal` (success, all projects restored/built/tested)
 - Compose smoke verification completed:
   - `podman compose -f ops/compose/compose.yaml up -d --build` (stack up and healthy)
   - API smoke results:
@@ -125,8 +149,13 @@ Build error from missing `IServiceCollection` references was addressed by adding
     - metrics exported via collector Prometheus endpoint, including:
       - `http_server_request_duration_seconds_*`
       - `work_items_bulk_transition_*`
+- Multi-instance validation completed:
+  - `ops/scripts/scale-validate.sh --replicas 3 --iterations 12` (success)
+  - `ops/scripts/scale-validate.sh --replicas 3 --iterations 8` (success, after retry hardening)
+  - stack runs with `api` replicas `observability-demo_api_1..3` behind `observability-demo-proxy`
+  - Prometheus metrics confirmed distinct per-instance labels across all replicas
+  - Tempo search confirmed traces for `service.name=observability-demo-api`
+  - Loki labels confirmed `service_name=observability-demo-api`
 
 ## Next Steps (Immediate)
-1. Add/adjust SLI/SLO + uptime panels/queries to productionize dashboards.
-2. Validate multi-instance behavior by scaling API containers and confirming per-instance breakdowns.
-3. Add architecture/integration tests for telemetry-specific expectations where practical.
+Plan implementation is complete through Milestone 11.
