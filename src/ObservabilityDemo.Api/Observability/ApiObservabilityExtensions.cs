@@ -1,3 +1,4 @@
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -19,6 +20,9 @@ public static class ApiObservabilityExtensions
         var deploymentEnvironment = builder.Environment.EnvironmentName;
         var serviceVersion = typeof(Program).Assembly.GetName().Version?.ToString() ?? "1.0.0";
         var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"] ?? "http://localhost:4317";
+        var logsEndpoint = BuildSignalEndpoint(otlpEndpoint, "v1/logs");
+        var tracesEndpoint = BuildSignalEndpoint(otlpEndpoint, "v1/traces");
+        var metricsEndpoint = BuildSignalEndpoint(otlpEndpoint, "v1/metrics");
 
         builder.Host.UseSerilog(
             (_, _, loggerConfiguration) =>
@@ -32,8 +36,8 @@ public static class ApiObservabilityExtensions
                     .WriteTo.Console(new RenderedCompactJsonFormatter())
                     .WriteTo.OpenTelemetry(options =>
                     {
-                        options.Endpoint = otlpEndpoint;
-                        options.Protocol = OtlpProtocol.Grpc;
+                        options.Endpoint = logsEndpoint;
+                        options.Protocol = OtlpProtocol.HttpProtobuf;
                         options.ResourceAttributes = new Dictionary<string, object>
                         {
                             ["service.name"] = serviceName,
@@ -73,7 +77,8 @@ public static class ApiObservabilityExtensions
                     .AddSource("Npgsql")
                     .AddOtlpExporter(options =>
                     {
-                        options.Endpoint = new Uri(otlpEndpoint);
+                        options.Endpoint = new Uri(tracesEndpoint);
+                        options.Protocol = OtlpExportProtocol.HttpProtobuf;
                     });
             })
             .WithMetrics(metricsBuilder =>
@@ -106,11 +111,17 @@ public static class ApiObservabilityExtensions
                         })
                     .AddOtlpExporter(options =>
                     {
-                        options.Endpoint = new Uri(otlpEndpoint);
+                        options.Endpoint = new Uri(metricsEndpoint);
+                        options.Protocol = OtlpExportProtocol.HttpProtobuf;
                     });
             });
 
         return builder;
+    }
+
+    private static string BuildSignalEndpoint(string baseEndpoint, string signalPath)
+    {
+        return $"{baseEndpoint.TrimEnd('/')}/{signalPath}";
     }
 
     public static WebApplication UseApiObservability(this WebApplication app)

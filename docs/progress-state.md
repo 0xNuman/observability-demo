@@ -14,7 +14,9 @@ To resume without scanning the full repo, read only:
 - Milestone 3 (PostgreSQL schema/scripts): complete
 - Milestone 4 (Dapper + stored procedure wiring): complete
 - Milestone 5 (API endpoints + tenant middleware): complete
-- Milestone 6 (OpenTelemetry + Serilog code wiring): implemented, pending runtime smoke in compose
+- Milestone 6 (OpenTelemetry + Serilog code wiring): complete
+- Milestone 7 (Podman compose stack + config files): complete
+- Milestone 10 (scaling/telemetry drill-down validation): in progress (single-instance smoke complete)
 
 ## Completed Work
 - Created solution in new format: `ObservabilityDemo.slnx` (legacy `.sln` removed).
@@ -77,6 +79,9 @@ To resume without scanning the full repo, read only:
 - Added verification-focused tests for Milestone 2 behavior:
   - API endpoint tests with `WebApplicationFactory` for tenant header validation and WorkItem flows
   - Application service tests for pagination/transition validation behavior
+- Added traffic generation script for observability demos:
+  - `ops/scripts/generate-traffic.sh`
+  - generates normal + slow + failing traffic patterns for Grafana/Tempo/Loki validation
 
 ## Important Fix Applied
 Build error from missing `IServiceCollection` references was addressed by adding:
@@ -86,6 +91,12 @@ Build error from missing `IServiceCollection` references was addressed by adding
 - Follow-up compile issue in Infrastructure DI (`PostgresConnectionString` type resolution) was fixed by adding the missing namespace import.
 - Telemetry compile issue in Infrastructure (`TagList` resolution) was fixed by adding the required `System.Diagnostics` namespace import.
 - API test JSON enum deserialization mismatch was fixed by using explicit `JsonStringEnumConverter` in test client parsing.
+- OTel collector receiver binding issue was fixed by explicitly binding OTLP gRPC/HTTP receivers to `0.0.0.0` in `ops/otel/otel-collector-config.yaml`.
+- OTLP export path issue was fixed by using explicit signal paths:
+  - traces: `/v1/traces`
+  - metrics: `/v1/metrics`
+  - logs: `/v1/logs`
+  This resolved `404` export responses and enabled end-to-end telemetry ingestion.
 
 ## Verification Completed
 - `dotnet restore` completed successfully (2026-02-19, ~0.5s).
@@ -99,8 +110,23 @@ Build error from missing `IServiceCollection` references was addressed by adding
   - `dotnet restore ObservabilityDemo.slnx -v minimal` (success, no unresolved package warnings)
   - `dotnet build ObservabilityDemo.slnx --no-restore -v minimal` (success, 0 warnings/0 errors)
   - `dotnet test ObservabilityDemo.slnx --no-build -v minimal` (success, all test projects passing)
+- Compose smoke verification completed:
+  - `podman compose -f ops/compose/compose.yaml up -d --build` (stack up and healthy)
+  - API smoke results:
+    - `/health/live` `200`
+    - `/health/ready` `200`
+    - `/diagnostics/slow` `200`
+    - `/diagnostics/fail` `500` (intentional failure path)
+    - `/work-items` tenant header validation `400` for missing/invalid header
+    - WorkItem create/get/list/patch/bulk-transition flows `2xx` with tenant isolation
+  - Telemetry smoke results:
+    - traces ingested in Tempo (search and trace-id lookup successful)
+    - logs ingested in Loki (`service_name=observability-demo-api` present)
+    - metrics exported via collector Prometheus endpoint, including:
+      - `http_server_request_duration_seconds_*`
+      - `work_items_bulk_transition_*`
 
 ## Next Steps (Immediate)
-1. Run compose stack smoke tests for end-to-end API + Postgres + observability flow.
-2. Validate trace/log/metric drill-down in Grafana/Tempo/Loki using diagnostics + WorkItem endpoints.
-3. Add/adjust SLI/SLO + uptime panels/queries to productionize the dashboards.
+1. Add/adjust SLI/SLO + uptime panels/queries to productionize dashboards.
+2. Validate multi-instance behavior by scaling API containers and confirming per-instance breakdowns.
+3. Add architecture/integration tests for telemetry-specific expectations where practical.

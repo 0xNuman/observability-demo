@@ -11,7 +11,7 @@ services:
       Service__Name: observability-demo-api
       Service__InstanceId: ${HOSTNAME:-local}-api
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=observability_demo;Username=postgres;Password=postgres
-      Observability__OtlpEndpoint: http://otel-collector:4317
+      Observability__OtlpEndpoint: http://otel-collector:4318
     depends_on:
       postgres:
         condition: service_healthy
