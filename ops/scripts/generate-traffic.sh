@@ -10,6 +10,8 @@ SLEEP_MS="${SLEEP_MS:-150}"
 SLOW_EVERY="${SLOW_EVERY:-8}"
 FAIL_EVERY="${FAIL_EVERY:-15}"
 SLOW_DELAY_MS="${SLOW_DELAY_MS:-1200}"
+RPS="${RPS:-0}"
+DURATION_SECONDS="${DURATION_SECONDS:-0}"
 
 usage() {
   cat <<'EOF'
@@ -22,6 +24,10 @@ Options:
                          (example: http://localhost:8080,http://localhost:8081,http://localhost:8082)
   --tenant-id GUID       Tenant ID header value
   --iterations N         Number of traffic iterations (default: 50)
+  --rps N                Target loop rate (iterations per second).
+                         When set > 0, --sleep-ms is ignored.
+  --duration-seconds N   Run continuously for N seconds.
+                         When set > 0, --iterations is ignored.
   --sleep-ms N           Sleep between iterations in milliseconds (default: 150)
   --slow-every N         Hit /diagnostics/slow every N iterations (default: 8)
   --fail-every N         Hit /diagnostics/fail every N iterations (default: 15)
@@ -29,7 +35,7 @@ Options:
   -h, --help             Show this help
 
 Environment overrides are also supported:
-  BASE_URL, BASE_URLS, TENANT_ID, ITERATIONS, SLEEP_MS, SLOW_EVERY, FAIL_EVERY, SLOW_DELAY_MS
+  BASE_URL, BASE_URLS, TENANT_ID, ITERATIONS, RPS, DURATION_SECONDS, SLEEP_MS, SLOW_EVERY, FAIL_EVERY, SLOW_DELAY_MS
 EOF
 }
 
@@ -49,6 +55,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --iterations)
       ITERATIONS="$2"
+      shift 2
+      ;;
+    --rps)
+      RPS="$2"
+      shift 2
+      ;;
+    --duration-seconds)
+      DURATION_SECONDS="$2"
       shift 2
       ;;
     --sleep-ms)
@@ -84,8 +98,28 @@ if ! [[ "$ITERATIONS" =~ ^[0-9]+$ ]] || [[ "$ITERATIONS" -le 0 ]]; then
   exit 1
 fi
 
+if ! [[ "$RPS" =~ ^[0-9]+$ ]]; then
+  echo "RPS must be a non-negative integer." >&2
+  exit 1
+fi
+
+if ! [[ "$DURATION_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "DURATION_SECONDS must be a non-negative integer." >&2
+  exit 1
+fi
+
 if ! [[ "$SLEEP_MS" =~ ^[0-9]+$ ]]; then
   echo "SLEEP_MS must be a non-negative integer." >&2
+  exit 1
+fi
+
+if ! [[ "$SLOW_EVERY" =~ ^[0-9]+$ ]]; then
+  echo "SLOW_EVERY must be a non-negative integer." >&2
+  exit 1
+fi
+
+if ! [[ "$FAIL_EVERY" =~ ^[0-9]+$ ]]; then
+  echo "FAIL_EVERY must be a non-negative integer." >&2
   exit 1
 fi
 
@@ -136,9 +170,35 @@ classify_code() {
 }
 
 echo "Generating traffic..."
-echo "BASE_URLS=${target_base_urls[*]} TENANT_ID=$TENANT_ID ITERATIONS=$ITERATIONS"
+if (( DURATION_SECONDS > 0 )); then
+  run_mode="duration=${DURATION_SECONDS}s"
+else
+  run_mode="iterations=$ITERATIONS"
+fi
 
-for ((i=1; i<=ITERATIONS; i++)); do
+if (( RPS > 0 )); then
+  # Loop-rate mode; each loop performs the script's request sequence.
+  sleep_interval_seconds="$(awk "BEGIN { printf \"%.6f\", 1 / $RPS }")"
+  pace_mode="rps=$RPS"
+else
+  sleep_interval_seconds=""
+  pace_mode="sleep_ms=$SLEEP_MS"
+fi
+
+echo "BASE_URLS=${target_base_urls[*]} TENANT_ID=$TENANT_ID $run_mode $pace_mode"
+
+i=1
+started_epoch="$(date +%s)"
+while true; do
+  if (( DURATION_SECONDS > 0 )); then
+    now_epoch="$(date +%s)"
+    if (( now_epoch - started_epoch >= DURATION_SECONDS )); then
+      break
+    fi
+  elif (( i > ITERATIONS )); then
+    break
+  fi
+
   target="${target_base_urls[$(((i - 1) % ${#target_base_urls[@]}))]}"
 
   code="$(status_code -H "X-Tenant-Id: $TENANT_ID" "$target/work-items?page=1&pageSize=20")"
@@ -164,17 +224,27 @@ EOF
     classify_code "$code"
   fi
 
-  if (( SLOW_EVERY > 0 && i % SLOW_EVERY == 0 )); then
-    code="$(status_code "$target/diagnostics/slow?delayMs=$SLOW_DELAY_MS")"
-    classify_code "$code"
+  if (( SLOW_EVERY > 0 )); then
+    if (( i % SLOW_EVERY == 0 )); then
+      code="$(status_code "$target/diagnostics/slow?delayMs=$SLOW_DELAY_MS")"
+      classify_code "$code"
+    fi
   fi
 
-  if (( FAIL_EVERY > 0 && i % FAIL_EVERY == 0 )); then
-    code="$(status_code "$target/diagnostics/fail")"
-    classify_code "$code"
+  if (( FAIL_EVERY > 0 )); then
+    if (( i % FAIL_EVERY == 0 )); then
+      code="$(status_code "$target/diagnostics/fail")"
+      classify_code "$code"
+    fi
   fi
 
-  sleep_between_iterations
+  if (( RPS > 0 )); then
+    sleep "$sleep_interval_seconds"
+  else
+    sleep_between_iterations
+  fi
+
+  ((i+=1))
 done
 
 echo

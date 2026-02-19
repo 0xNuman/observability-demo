@@ -39,8 +39,15 @@ Useful options:
 - `--base-url` to target a different API host.
 - `--base-urls` to round-robin traffic across scaled instances.
 - `--tenant-id` to pick a specific tenant.
+- `--rps` to set loop rate (iterations per second).
+- `--duration-seconds` to run continuously for a fixed window.
 - `--slow-every` / `--fail-every` to tune latency/error frequency.
 - `--slow-delay-ms` to control intentional slow-request duration.
+
+Continuous rate example:
+```bash
+ops/scripts/generate-traffic.sh --rps 100 --duration-seconds 300
+```
 
 For one-command scale validation (scale + traffic + instance-label check):
 ```bash

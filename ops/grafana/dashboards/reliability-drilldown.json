@@ -20,7 +20,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "query": "label_values(http_server_request_duration_seconds_count{job=\"observability-demo-api\"}, instance)",
+        "query": "label_values(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\"}, exported_instance)",
         "includeAll": true,
         "multi": true,
         "refresh": 2,
@@ -39,7 +39,7 @@
       },
       "targets": [
         {
-          "expr": "100 * (sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_response_status_code!~\"5..\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\"}[30d])))",
+          "expr": "100 * (sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_response_status_code!~\"5..\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[30d])))",
           "legendFormat": "availability"
         }
       ],
@@ -84,7 +84,7 @@
       },
       "targets": [
         {
-          "expr": "100 * (sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_response_status_code=~\"5..\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\"}[30d])))",
+          "expr": "100 * (sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_response_status_code=~\"5..\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[30d])))",
           "legendFormat": "error-rate"
         }
       ],
@@ -129,7 +129,7 @@
       },
       "targets": [
         {
-          "expr": "100 * (sum(increase(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\",http_route!=\"diagnostics/slow\",le=\"0.5\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_route!=\"diagnostics/slow\"}[30d])))",
+          "expr": "100 * (sum(increase(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_route!=\"diagnostics/slow\",le=\"0.5\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_route!=\"diagnostics/slow\"}[30d])))",
           "legendFormat": "latency-sli"
         }
       ],
@@ -202,7 +202,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\"}[5m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[5m]))) * 1000",
           "legendFormat": "{{http_route}}"
         }
       ],
@@ -223,7 +223,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\"}[5m])) - sum by (http_route) (rate(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\",le=\"0.5\"}[5m]))",
+          "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[5m])) - sum by (http_route) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",le=\"0.5\"}[5m]))",
           "legendFormat": "{{http_route}}"
         }
       ],
@@ -244,7 +244,7 @@
       },
       "targets": [
         {
-          "expr": "topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{job=\"observability-demo-api\",instance=~\"$instance\"}[5m]))) * 1000)",
+          "expr": "topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[5m]))) * 1000)",
           "format": "table"
         }
       ],
@@ -265,7 +265,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{job=\"observability-demo-api\",instance=~\"$instance\",http_response_status_code=~\"5..\"}[5m]))",
+          "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_response_status_code=~\"5..\"}[5m]))",
           "legendFormat": "{{http_route}}"
         }
       ],
