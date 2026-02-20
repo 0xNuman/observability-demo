@@ -7,7 +7,7 @@
   "panels": [
     {
       "type": "timeseries",
-      "title": "p50 Request Latency (ms)",
+      "title": "p50 Request Latency",
       "id": 1,
       "datasource": {
         "type": "prometheus",
@@ -15,11 +15,16 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m]))) * 1000",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
           "legendFormat": "p50",
           "exemplar": true
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -29,7 +34,7 @@
     },
     {
       "type": "timeseries",
-      "title": "p95 Request Latency (ms)",
+      "title": "p95 Request Latency",
       "id": 2,
       "datasource": {
         "type": "prometheus",
@@ -37,11 +42,16 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
           "legendFormat": "p95",
           "exemplar": true
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -51,7 +61,7 @@
     },
     {
       "type": "timeseries",
-      "title": "p99 Request Latency (ms)",
+      "title": "p99 Request Latency",
       "id": 3,
       "datasource": {
         "type": "prometheus",
@@ -59,11 +69,16 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m]))) * 1000",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
           "legendFormat": "p99",
           "exemplar": true
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
       "gridPos": {
         "h": 8,
         "w": 12,

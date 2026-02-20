@@ -195,18 +195,23 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "p95 Latency By Route (ms)",
+      "title": "p95 Latency By Route",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[5m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (http_route, le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[5m])))",
           "legendFormat": "{{http_route}}",
           "exemplar": true
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
       "gridPos": {
         "h": 8,
         "w": 12,

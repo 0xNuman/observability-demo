@@ -20,7 +20,7 @@ services:
       - observability
 
   proxy:
-    image: docker.io/nginx:1.27-alpine
+    image: docker.io/nginx:1.29-alpine
     container_name: observability-demo-proxy
     depends_on:
       - api
@@ -32,7 +32,7 @@ services:
       - observability
 
   postgres:
-    image: docker.io/postgres:17-alpine
+    image: docker.io/postgres:18-alpine
     container_name: observability-demo-postgres
     environment:
       POSTGRES_DB: observability_demo
@@ -68,7 +68,7 @@ services:
       - observability
 
   tempo:
-    image: docker.io/grafana/tempo:2.8.2
+    image: docker.io/grafana/tempo:2.10.1
     container_name: observability-demo-tempo
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
