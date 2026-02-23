@@ -2,7 +2,7 @@
   "title": "Request Drilldown",
   "uid": "reliability-drilldown",
   "schemaVersion": 41,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
   "time": {
     "from": "now-1h",
@@ -228,7 +228,7 @@
       "id": 5,
       "type": "logs",
       "title": "Error Logs",
-      "description": "5xx log entries. instance_id identifies which pod produced the error. Click a trace_id value to open the trace in Tempo.",
+      "description": "5xx log entries from Loki. The `instance` label filters to the selected pod(s). Each entry carries trace_id — click it to open the trace in Tempo.",
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 20 },
       "datasource": { "type": "loki", "uid": "loki" },
       "fieldConfig": {
@@ -247,7 +247,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{service_name=\"observability-demo-api\"} | json | instance_id=~\"$instance\" | attributes_StatusCode >= `500`",
+          "expr": "{job=\"observability-demo-api\",instance=~\"$instance\"} | attributes_http_status_code >= 500",
           "refId": "A",
           "queryType": "range"
         }
@@ -256,17 +256,17 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Exemplar Surface",
-      "description": "Raw request throughput with exemplar overlay. Narrow instance to a single pod to compare its exemplars against the fleet. Click any diamond to open that request's Tempo trace.",
+      "title": "p95 Latency per Instance",
+      "description": "p95 latency broken out per API instance with exemplar overlay. When instances diverge, the slower pod is the culprit. Narrow the Instance variable to a single pod and click a diamond to open that instance's Tempo trace.",
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
-          "decimals": 2,
+          "unit": "s",
+          "decimals": 3,
           "custom": {
-            "lineWidth": 1,
-            "fillOpacity": 10,
+            "lineWidth": 2,
+            "fillOpacity": 0,
             "showPoints": "never",
             "spanNulls": true
           },
@@ -279,12 +279,12 @@
           "displayMode": "list",
           "placement": "bottom"
         },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_route=~\"$route\",le=\"+Inf\"}[1m])",
+          "expr": "histogram_quantile(0.95, sum by (exported_instance, le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\",http_route=~\"$route\"}[1m])))",
           "legendFormat": "{{exported_instance}}",
           "refId": "A",
           "exemplar": true
@@ -301,9 +301,43 @@
         {
           "id": 7,
           "type": "timeseries",
-          "title": "GC Heap Total Allocated",
-          "description": "Total bytes allocated on the GC heap per instance. A growing sawtooth pattern is healthy GC. A rising floor indicates a potential memory leak.",
-          "gridPos": { "h": 7, "w": 6, "x": 0, "y": 30 },
+          "title": "CPU Usage %",
+          "description": "CPU time consumed per instance as a percentage of one CPU core. Values above 100% indicate multi-core saturation. Sustained spikes correlate with rising p99 latency across all routes.",
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 30 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "spanNulls": true
+              },
+              "color": { "mode": "palette-classic" }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (exported_instance) (rate(dotnet_process_cpu_time_seconds_total{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[1m])) * 100",
+              "legendFormat": "{{exported_instance}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Memory Working Set",
+          "description": "Process memory working set per instance. A flat line is healthy. A steadily rising floor across restarts indicates a memory leak.",
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 30 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
@@ -320,23 +354,56 @@
           },
           "options": {
             "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi", "sort": "none" }
+            "tooltip": { "mode": "multi", "sort": "desc" }
           },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "dotnet_gc_heap_total_allocated_bytes{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}",
+              "expr": "dotnet_process_memory_working_set_bytes{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}",
               "legendFormat": "{{exported_instance}}",
               "refId": "A"
             }
           ]
         },
         {
-          "id": 8,
+          "id": 9,
+          "type": "timeseries",
+          "title": "GC Allocation Rate",
+          "description": "Rate of heap bytes allocated per second per instance. A healthy process shows a smooth sawtooth. A rising floor between GC cycles indicates allocation pressure.",
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 30 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5,
+                "showPoints": "never",
+                "spanNulls": true
+              },
+              "color": { "mode": "palette-classic" }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "rate(dotnet_gc_heap_total_allocated_bytes_total{exported_job=\"observability-demo-api\",exported_instance=~\"$instance\"}[2m])",
+              "legendFormat": "{{exported_instance}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 10,
           "type": "timeseries",
           "title": "Thread Pool Queue Length",
-          "description": "Number of work items queued to the thread pool. Starvation manifests as rising p99 across all routes simultaneously.",
-          "gridPos": { "h": 7, "w": 6, "x": 6, "y": 30 },
+          "description": "Work items queued to the thread pool per instance. Thread pool starvation manifests as p99 rising across ALL routes simultaneously while queue length climbs.",
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 37 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
@@ -374,11 +441,11 @@
           ]
         },
         {
-          "id": 9,
+          "id": 11,
           "type": "timeseries",
           "title": "DB Connections: Idle vs Used",
-          "description": "Overlaid idle and used connection counts. The ratio matters more than the absolute numbers.",
-          "gridPos": { "h": 7, "w": 6, "x": 12, "y": 30 },
+          "description": "Overlaid idle and used connection counts per instance. The ratio matters more than the absolute values. All connections used with none idle = pool saturation imminent.",
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 37 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
@@ -413,11 +480,11 @@
           ]
         },
         {
-          "id": 10,
+          "id": 12,
           "type": "timeseries",
           "title": "DB Pending Connection Requests",
-          "description": "Leading indicator of connection pool exhaustion. Any non-zero value warrants investigation.",
-          "gridPos": { "h": 7, "w": 6, "x": 18, "y": 30 },
+          "description": "Requests waiting for a free connection from the pool. Any non-zero value means the pool is exhausted. This is the leading indicator — it appears before timeouts start.",
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 37 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
