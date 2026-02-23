@@ -1,129 +1,478 @@
 {
-  "title": "Latency Overview (Bootstrap)",
+  "title": "SLO Status",
   "uid": "latency-overview-bootstrap",
   "schemaVersion": 41,
   "version": 1,
-  "refresh": "10s",
-  "panels": [
-    {
-      "type": "timeseries",
-      "title": "p50 Request Latency",
-      "id": 1,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p50",
-          "exemplar": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "p95 Request Latency",
-      "id": 2,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p95",
-          "exemplar": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "p99 Request Latency",
-      "id": 3,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p99",
-          "exemplar": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Availability % (5m)",
-      "id": 4,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "100 * (sum(rate(http_server_request_duration_seconds_count{http_response_status_code!~\"5..\"}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m])))",
-          "legendFormat": "availability"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
-      }
-    }
-  ],
-  "templating": {
-    "list": []
-  },
+  "refresh": "30s",
   "time": {
-    "from": "now-1h",
+    "from": "now-7d",
     "to": "now"
   },
   "timezone": "browser",
-  "annotations": {
+  "templating": {
     "list": []
-  }
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "SLO Scoreboard (30d)",
+      "id": 100,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Availability SLI (30d)",
+      "description": "Fraction of non-5xx requests over the past 30 days. SLO target: 99.9%.",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 99 },
+              { "color": "green", "value": 99.9 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 * sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",http_response_status_code!~\"5..\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\"}[30d]))",
+          "legendFormat": "Availability SLI",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Latency SLI (30d)",
+      "description": "Fraction of requests served within 500ms over the past 30 days (excluding /diagnostics/slow). SLO target: 99%.",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 95 },
+              { "color": "green", "value": 99 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 * sum(increase(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\",http_route!=\"diagnostics/slow\",le=\"0.5\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",http_route!=\"diagnostics/slow\"}[30d]))",
+          "legendFormat": "Latency SLI",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Availability Budget Remaining",
+      "description": "Error budget consumed relative to the 30-day SLO window. 100% = full budget intact. 0% = exhausted. Negative = SLO already breached.",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 25 },
+              { "color": "green", "value": 75 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_availability_budget_remaining_pct:30d",
+          "legendFormat": "Budget Remaining",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Latency Budget Remaining",
+      "description": "Latency error budget consumed relative to the 30-day SLO window. 100% = full budget intact. 0% = exhausted.",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 25 },
+              { "color": "green", "value": 75 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_latency_budget_remaining_pct:30d",
+          "legendFormat": "Budget Remaining",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Burn Rate",
+      "id": 101,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Availability Burn Rate",
+      "description": "Rate at which the availability error budget is being consumed. 1x = sustainable. 6x = page in 5 days. 14.4x = page in 2 hours (multi-window alert fires when 5m AND 1h both exceed 14.4x).",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "orange", "value": 6 },
+              { "color": "red", "value": 14.4 }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "thresholdsStyle": { "mode": "area" },
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_availability_burn_rate:5m",
+          "legendFormat": "5m",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_availability_burn_rate:1h",
+          "legendFormat": "1h",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_availability_burn_rate:6h",
+          "legendFormat": "6h",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Latency Burn Rate",
+      "description": "Rate at which the latency error budget is being consumed. Alert fires when both the 5m and 1h windows simultaneously exceed 14.4x.",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "orange", "value": 6 },
+              { "color": "red", "value": 14.4 }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "thresholdsStyle": { "mode": "area" },
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_latency_burn_rate:5m",
+          "legendFormat": "5m",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_latency_burn_rate:1h",
+          "legendFormat": "1h",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "job:http_server_latency_burn_rate:6h",
+          "legendFormat": "6h",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Current State",
+      "id": 102,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Request Rate (req/s)",
+      "description": "Current requests per second (5m average).",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\"}[5m]))",
+          "legendFormat": "req/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Error Rate %",
+      "description": "Percentage of 5xx responses over the last 5 minutes.",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 * sum(rate(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\",http_response_status_code=~\"5..\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{exported_job=\"observability-demo-api\"}[5m]))",
+          "legendFormat": "Error Rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Latency Percentiles",
+      "description": "p50 / p95 / p99 latency over time. Click exemplar dots (diamonds) to open the corresponding Tempo trace.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\"}[5m])))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "exemplar": true
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\"}[5m])))",
+          "legendFormat": "p95",
+          "refId": "B",
+          "exemplar": true
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{exported_job=\"observability-demo-api\"}[5m])))",
+          "legendFormat": "p99",
+          "refId": "C",
+          "exemplar": true
+        }
+      ]
+    }
+  ]
 }

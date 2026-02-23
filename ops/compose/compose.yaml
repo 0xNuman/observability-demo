@@ -102,6 +102,8 @@ services:
       - "--web.enable-lifecycle"
     volumes:
       - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
+      - ../prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"

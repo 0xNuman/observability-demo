@@ -1,0 +1,181 @@
+groups:
+  - name: sli_preaggregation
+    interval: 15s
+    rules:
+      # --- Service-level request rate ---
+      - record: job:http_server_requests:rate5m
+        expr: >
+          sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[5m]))
+
+      # --- Service-level error rate ---
+      - record: job:http_server_errors:rate5m
+        expr: >
+          sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[5m]))
+
+      # --- Service-level error ratio ---
+      - record: job:http_server_error_ratio:rate5m
+        expr: >
+          job:http_server_errors:rate5m
+          /
+          job:http_server_requests:rate5m
+
+      # --- Latency SLI: fraction of requests served within 500ms (excluding diagnostic slow endpoint) ---
+      - record: job:http_server_latency_sli:rate5m
+        expr: >
+          sum(rate(http_server_request_duration_seconds_bucket{exported_job="observability-demo-api",http_route!="diagnostics/slow",le="0.5"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_route!="diagnostics/slow"}[5m]))
+
+      # --- Per-route request rate ---
+      - record: job_route:http_server_requests:rate5m
+        expr: >
+          sum by (http_route) (rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[5m]))
+
+      # --- Per-route error rate ---
+      - record: job_route:http_server_errors:rate5m
+        expr: >
+          sum by (http_route) (rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[5m]))
+
+      # --- Per-instance request rate ---
+      - record: job_instance:http_server_requests:rate5m
+        expr: >
+          sum by (exported_instance) (rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[5m]))
+
+      # --- Per-instance error rate ---
+      - record: job_instance:http_server_errors:rate5m
+        expr: >
+          sum by (exported_instance) (rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[5m]))
+
+  - name: slo_error_burn_rate
+    interval: 15s
+    rules:
+      # Availability SLO: 99.9% (error budget = 0.001)
+      # Burn rate = actual error rate / error budget rate
+
+      # 5-minute window burn rate
+      - record: job:http_server_availability_burn_rate:5m
+        expr: >
+          (
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[5m]))
+          )
+          / 0.001
+
+      # 30-minute window burn rate
+      - record: job:http_server_availability_burn_rate:30m
+        expr: >
+          (
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[30m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[30m]))
+          )
+          / 0.001
+
+      # 1-hour window burn rate
+      - record: job:http_server_availability_burn_rate:1h
+        expr: >
+          (
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[1h]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[1h]))
+          )
+          / 0.001
+
+      # 6-hour window burn rate
+      - record: job:http_server_availability_burn_rate:6h
+        expr: >
+          (
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[6h]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[6h]))
+          )
+          / 0.001
+
+  - name: slo_latency_burn_rate
+    interval: 15s
+    rules:
+      # Latency SLO: 99% of requests within 500ms (error budget = 0.01)
+      # Burn rate = (1 - fraction within SLO) / error budget
+
+      # 5-minute window burn rate
+      - record: job:http_server_latency_burn_rate:5m
+        expr: >
+          (
+            1 - (
+              sum(rate(http_server_request_duration_seconds_bucket{exported_job="observability-demo-api",http_route!="diagnostics/slow",le="0.5"}[5m]))
+              /
+              sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_route!="diagnostics/slow"}[5m]))
+            )
+          )
+          / 0.01
+
+      # 30-minute window burn rate
+      - record: job:http_server_latency_burn_rate:30m
+        expr: >
+          (
+            1 - (
+              sum(rate(http_server_request_duration_seconds_bucket{exported_job="observability-demo-api",http_route!="diagnostics/slow",le="0.5"}[30m]))
+              /
+              sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_route!="diagnostics/slow"}[30m]))
+            )
+          )
+          / 0.01
+
+      # 1-hour window burn rate
+      - record: job:http_server_latency_burn_rate:1h
+        expr: >
+          (
+            1 - (
+              sum(rate(http_server_request_duration_seconds_bucket{exported_job="observability-demo-api",http_route!="diagnostics/slow",le="0.5"}[1h]))
+              /
+              sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_route!="diagnostics/slow"}[1h]))
+            )
+          )
+          / 0.01
+
+      # 6-hour window burn rate
+      - record: job:http_server_latency_burn_rate:6h
+        expr: >
+          (
+            1 - (
+              sum(rate(http_server_request_duration_seconds_bucket{exported_job="observability-demo-api",http_route!="diagnostics/slow",le="0.5"}[6h]))
+              /
+              sum(rate(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_route!="diagnostics/slow"}[6h]))
+            )
+          )
+          / 0.01
+
+  - name: slo_error_budget
+    interval: 60s
+    rules:
+      # Availability budget remaining (30d window)
+      # 100% means full budget, 0% means exhausted, negative means overspent
+      - record: job:http_server_availability_budget_remaining_pct:30d
+        expr: >
+          100 * (
+            1 - (
+              (
+                sum(increase(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_response_status_code=~"5.."}[30d]))
+                /
+                sum(increase(http_server_request_duration_seconds_count{exported_job="observability-demo-api"}[30d]))
+              )
+              / 0.001
+            )
+          )
+
+      # Latency budget remaining (30d window)
+      - record: job:http_server_latency_budget_remaining_pct:30d
+        expr: >
+          100 * (
+            1 - (
+              (
+                1 - (
+                  sum(increase(http_server_request_duration_seconds_bucket{exported_job="observability-demo-api",http_route!="diagnostics/slow",le="0.5"}[30d]))
+                  /
+                  sum(increase(http_server_request_duration_seconds_count{exported_job="observability-demo-api",http_route!="diagnostics/slow"}[30d]))
+                )
+              )
+              / 0.01
+            )
+          )

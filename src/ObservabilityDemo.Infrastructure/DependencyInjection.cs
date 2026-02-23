@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using ObservabilityDemo.Application.Abstractions.Persistence;
-using ObservabilityDemo.Infrastructure.Persistence;
 using ObservabilityDemo.Infrastructure.Persistence.WorkItems;
 
 namespace ObservabilityDemo.Infrastructure;
@@ -16,7 +16,9 @@ public static class DependencyInjection
             throw new InvalidOperationException("ConnectionStrings:Postgres must be configured.");
         }
 
-        services.AddSingleton(new PostgresConnectionString(connectionString));
+        var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
+
+        services.AddSingleton(dataSource);
         services.AddScoped<IWorkItemRepository, DapperWorkItemRepository>();
 
         return services;

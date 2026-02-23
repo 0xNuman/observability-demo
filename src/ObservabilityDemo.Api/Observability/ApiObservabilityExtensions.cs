@@ -94,6 +94,7 @@ public static class ApiObservabilityExtensions
                     .AddRuntimeInstrumentation()
                     .SetExemplarFilter(ExemplarFilterType.TraceBased)
                     .AddMeter(WorkItemTelemetry.MeterName)
+                    .AddMeter("Npgsql")
                     .AddView(
                         instrumentName: "http.server.request.duration",
                         new ExplicitBucketHistogramConfiguration

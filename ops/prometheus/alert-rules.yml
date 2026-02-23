@@ -1,0 +1,156 @@
+groups:
+  - name: slo_burn_rate_alerts
+    rules:
+      # ============================================================
+      # Availability SLO Burn Rate Alerts (SLO: 99.9%)
+      # Multi-window burn rate model from Google SRE Workbook Ch.5
+      # ============================================================
+
+      # PAGE: Burns through 2% of 30-day budget in 1 hour
+      # Fast burn detected in both 5m AND 1h windows
+      - alert: AvailabilityBurnRateCritical
+        expr: >
+          job:http_server_availability_burn_rate:5m > 14.4
+          and
+          job:http_server_availability_burn_rate:1h > 14.4
+        for: 2m
+        labels:
+          severity: page
+          slo: availability
+        annotations:
+          summary: "Availability SLO burn rate critical (>14.4x)"
+          description: >
+            Availability error budget is being consumed at {{ printf "%.1f" $value }}x the sustainable rate.
+            5m burn rate and 1h burn rate both exceed 14.4x threshold. Budget exhaustion is imminent.
+
+      # PAGE: Burns through 5% of 30-day budget in 6 hours
+      # Sustained elevated burn in 30m AND 6h windows
+      - alert: AvailabilityBurnRateHigh
+        expr: >
+          job:http_server_availability_burn_rate:30m > 6
+          and
+          job:http_server_availability_burn_rate:6h > 6
+        for: 5m
+        labels:
+          severity: page
+          slo: availability
+        annotations:
+          summary: "Availability SLO burn rate high (>6x)"
+          description: >
+            Availability error budget is being consumed at {{ printf "%.1f" $value }}x the sustainable rate.
+            30m burn rate and 6h burn rate both exceed 6x threshold.
+
+      # TICKET: Burns through 10% of budget in 3 days
+      # Slow but steady degradation
+      - alert: AvailabilityBurnRateElevated
+        expr: >
+          job:http_server_availability_burn_rate:6h > 1
+        for: 30m
+        labels:
+          severity: ticket
+          slo: availability
+        annotations:
+          summary: "Availability SLO burn rate elevated (>1x sustained)"
+          description: >
+            Availability error budget is being consumed faster than sustainable.
+            6h burn rate is {{ printf "%.2f" $value }}x. This will exhaust the budget before the 30-day window resets.
+
+      # ============================================================
+      # Latency SLO Burn Rate Alerts (SLO: 99% within 500ms)
+      # ============================================================
+
+      # PAGE: Fast latency degradation
+      - alert: LatencyBurnRateCritical
+        expr: >
+          job:http_server_latency_burn_rate:5m > 14.4
+          and
+          job:http_server_latency_burn_rate:1h > 14.4
+        for: 2m
+        labels:
+          severity: page
+          slo: latency
+        annotations:
+          summary: "Latency SLO burn rate critical (>14.4x)"
+          description: >
+            Latency error budget is being consumed at {{ printf "%.1f" $value }}x the sustainable rate.
+            Requests exceeding the 500ms SLO threshold are significantly above normal.
+
+      # PAGE: Sustained latency degradation
+      - alert: LatencyBurnRateHigh
+        expr: >
+          job:http_server_latency_burn_rate:30m > 6
+          and
+          job:http_server_latency_burn_rate:6h > 6
+        for: 5m
+        labels:
+          severity: page
+          slo: latency
+        annotations:
+          summary: "Latency SLO burn rate high (>6x)"
+          description: >
+            Latency error budget is being consumed at {{ printf "%.1f" $value }}x the sustainable rate.
+            30m burn rate and 6h burn rate both exceed 6x threshold.
+
+      # TICKET: Slow latency creep
+      - alert: LatencyBurnRateElevated
+        expr: >
+          job:http_server_latency_burn_rate:6h > 1
+        for: 30m
+        labels:
+          severity: ticket
+          slo: latency
+        annotations:
+          summary: "Latency SLO burn rate elevated (>1x sustained)"
+          description: >
+            Latency error budget consumption exceeds sustainable rate.
+            6h burn rate is {{ printf "%.2f" $value }}x.
+
+  - name: infrastructure_alerts
+    rules:
+      # High instantaneous error rate
+      - alert: HighErrorRate
+        expr: >
+          job:http_server_error_ratio:rate5m > 0.05
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP 5xx error rate above 5%"
+          description: >
+            Error ratio is {{ humanizePercentage $value }} over the last 5 minutes.
+
+      # High p99 latency
+      - alert: HighP99Latency
+        expr: >
+          histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{exported_job="observability-demo-api"}[5m]))) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 latency above 2 seconds"
+          description: >
+            p99 request latency is {{ printf "%.2f" $value }}s.
+
+      # API instance down
+      - alert: ApiInstanceDown
+        expr: >
+          up{job="api-uptime"} == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "API instance {{ $labels.instance }} is down"
+          description: >
+            The API instance at {{ $labels.instance }} has been unreachable for more than 1 minute.
+
+      # .NET thread pool queue saturation
+      - alert: ThreadPoolSaturation
+        expr: >
+          dotnet_thread_pool_queue_length{exported_job="observability-demo-api"} > 50
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Thread pool queue length elevated"
+          description: >
+            Thread pool queue length is {{ printf "%.0f" $value }}, indicating potential thread starvation.

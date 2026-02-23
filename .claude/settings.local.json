@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(dotnet --version:*)",
-      "Bash(dotnet --list-sdks:*)"
+      "Bash(dotnet --list-sdks:*)",
+      "Bash(cd \"C:/Users/numan.rehman/wrk/tmp/observability-demo\" && dotnet restore ObservabilityDemo.slnx 2>&1)",
+      "Bash(cd \"C:/Users/numan.rehman/wrk/tmp/observability-demo\" && dotnet restore ObservabilityDemo.slnx --force 2>&1)",
+      "Bash(cd \"C:/Users/numan.rehman/wrk/tmp/observability-demo\" && dotnet build ObservabilityDemo.slnx 2>&1)",
+      "Bash(head:*)",
+      "Bash(cd \"C:/Users/numan.rehman/wrk/tmp/observability-demo\" && dotnet test ObservabilityDemo.slnx --no-build -v minimal 2>&1)"
     ]
   }
 }

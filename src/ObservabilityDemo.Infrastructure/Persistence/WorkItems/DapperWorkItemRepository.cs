@@ -5,12 +5,11 @@ using ObservabilityDemo.Application.Abstractions.Persistence;
 using ObservabilityDemo.Application.WorkItems;
 using ObservabilityDemo.Domain.Enums;
 using ObservabilityDemo.Infrastructure.Observability;
-using ObservabilityDemo.Infrastructure.Persistence;
 
 namespace ObservabilityDemo.Infrastructure.Persistence.WorkItems;
 
 public sealed class DapperWorkItemRepository(
-    PostgresConnectionString connectionString,
+    NpgsqlDataSource dataSource,
     ILogger<DapperWorkItemRepository> logger) : IWorkItemRepository
 {
     private const string SelectProjection = """
@@ -259,7 +258,7 @@ public sealed class DapperWorkItemRepository(
 
     private async Task<NpgsqlConnection> CreateOpenConnectionAsync(CancellationToken cancellationToken)
     {
-        var connection = new NpgsqlConnection(connectionString.Value);
+        var connection = dataSource.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         return connection;
     }
